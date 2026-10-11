@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum BusinessType { SUPERMARKET RESTAURANT SALON BOOKSHOP }
+enum PaymentMethod { CASH MPESA_TILL MPESA_PAYBILL CARD CREDIT }
+enum OrderType { DINE_IN TAKEAWAY DELIVERY WALK_IN APPOINTMENT }
+
+model BusinessSettings {
+  id String @id @default(cuid())
+  businessName String @db.VarChar(255) @default("My Business")
+  businessType BusinessType @default(SUPERMARKET)
+  receiptFooter String? @db.VarChar(255) @default("Asante sana, Karibu tena!")
+  vatEnabled Boolean @default(false)
+  mpesaTill String? @db.VarChar(50)
+  mpesaPaybill String? @db.VarChar(50)
+  currency String @db.VarChar(10) @default("KES")
+}
+
+model User {
+  id String @id @default(cuid())
+  name String @db.VarChar(100)
+  email String @unique @db.VarChar(100)
+  password String @db.VarChar(255)
+  role String @db.VarChar(20) @default("CASHIER")
+  commissionRate Float @default(0)
+}
+
+model Category { id String @id @default(cuid()) name String @unique @db.VarChar(100) products Product[] }
+model Supplier { id String @id @default(cuid()) name String @db.VarChar(100) phone String? @db.VarChar(20) debt Float @default(0) products Product[] }
+
+model Product {
+  id String @id @default(cuid())
+  name String @db.VarChar(255)
+  sku String? @unique @db.VarChar(100)
+  barcode String? @unique @db.VarChar(100)
+  isbn String? @db.VarChar(50)
+  author String? @db.VarChar(100)
+  buyingPrice Float
+  sellingPrice Float
+  stock Float @default(0)
+  minStock Float @default(10)
+  isService Boolean @default(false)
+  image String? @db.Text
+  categoryId String?
+  category Category? @relation(fields: [categoryId], references: [id])
+  supplierId String?
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  saleItems SaleItem[]
+  @@index([categoryId])
+}
+
+model Customer { id String @id @default(cuid()) name String @db.VarChar(100) phone String @unique @db.VarChar(20) balance Float @default(0) loyaltyPoints Int @default(0) sales Sale[] }
+model Table { id String @id @default(cuid()) name String @unique @db.VarChar(20) status String @db.VarChar(20) @default("AVAILABLE") }
+
+model Sale {
+  id String @id @default(cuid())
+  saleNumber String @unique @db.VarChar(50)
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id])
+  tableId String? @db.VarChar(50)
+  orderType OrderType @default(WALK_IN)
+  total Float
+  paymentMethod PaymentMethod
+  amountPaid Float
+  change Float @default(0)
+  staffId String? @db.VarChar(50)
+  notes String? @db.Text
+  items SaleItem[]
+  createdAt DateTime @default(now())
+}
+
+model SaleItem { id String @id @default(cuid()) saleId String sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade) productId String product Product @relation(fields: [productId], references: [id]) quantity Float price Float total Float modifiers String? @db.Text }
+model Expense { id String @id @default(cuid()) title String @db.VarChar(255) amount Float category String @db.VarChar(100) date DateTime @default(now()) }
+model Appointment { id String @id @default(cuid()) customerName String @db.VarChar(100) serviceId String @db.VarChar(50) staffId String @db.VarChar(50) date DateTime time String @db.VarChar(20) status String @db.VarChar(20) @default("PENDING") }
+model Shift { id String @id @default(cuid()) userId String @db.VarChar(50) openingFloat Float closingCash Float? totalSales Float @default(0) status String @db.VarChar(20) @default("OPEN") openedAt DateTime @default(now()) }
